@@ -1,3 +1,6 @@
+Edited from OptiPIM's original readme: https://github.com/ETHZ-DYNAMO/OptiPIM/tree/9be8f9a0fd44e4c353ae9331a10677a9edba6dd0
+This repo contains my modified version of OptiPIM which should be easier to use than theirs. This Readme contains slightly modified directions for setting it up.
+
 # OptiPIM
 
 ```
@@ -30,7 +33,10 @@ To successfully build and run OptiPIM, please ensure you have:
     sudo apt-get install -y g++ clang lld ccache cmake ninja-build python3 python3-venv libboost-regex-dev git curl gzip libreadline-dev unzip
     ```
    Before moving on to the next step, refresh your environment variables in your current terminal to make sure that all newly installed tools are visible in your `PATH`. Alternatively, open a new terminal.
-2. **Python Environment**  
+
+   If working on the hpc, I recommend using a conda environment. You must also install MLIR and be sure to use version 16.0.0.6 (not the latest version!). To install MLIR if using a conda environment you can run
+   ```conda install "libmlir=16.0.6" "mlir=16.0.6"```
+3. **Python Environment**  
    For a clean, isolated setup, we recommend creating a dedicated Python virtual environment before running any experiments or installing dependencies: 
    
    (a) **Ensure Python > 3.10 is installed**:
@@ -54,7 +60,7 @@ To successfully build and run OptiPIM, please ensure you have:
     ```bash
     deactivate
     ``` 
-3. **Gurobi**
+4. **Gurobi**
 
     OptiPIM uses Gurobi to optimze the mapping for different PIM devices.
     
@@ -91,9 +97,10 @@ To successfully build and run OptiPIM, please ensure you have:
     export PATH="${PATH}:${GUROBI_HOME}/bin"
     export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$GUROBI_HOME/lib"
     ```
-
-    These lines can be added to your shell initiation script, e.g. `~/.bashrc` or `~/.zshrc`, or used with any other environment setup method. Besides that please also add the name of your gurobi version to **line 8** in [FindGUROBI.cmake](./cmake/modules/FindGUROBI.cmake). You just need to add the first three digit (i.e. You are using `gurobi1201`, please add `gurobi120` at the end of **line 8**).
-4. **Sufficient Disk Space**  
+     
+    These lines can be added to your shell initiation script, e.g. `~/.bashrc` or `~/.zshrc`, or used with any other environment setup method.
+    **IMPORTANT:** Besides that please also add the name of your gurobi version to **line 8** in [FindGUROBI.cmake](./cmake/modules/FindGUROBI.cmake). You just need to add the first three digit (i.e. You are using `gurobi1201`, please add `gurobi120` at the end of **line 8**).
+6. **Sufficient Disk Space**  
    - Building LLVM can require several gigabytes of disk space.
    - Running the analytical model validation may require a large disk space, if you run too many processes in parallel.  
 
@@ -116,6 +123,23 @@ make compile_optipim
 > [!WARNING]
 > Please make sure that there is no `#` in any of the folders in your path, as CMake does not allow `#` to appear in the compilation paths
 
+You will likely ecounter an error that looks like:
+undefined reference to `std::condition_variable::wait(std::unique_lock<std::mutex>&)@GLIBCXX_3.4.30'
+upon running make compile_optipim. 
+At this point you should run some version of the following code (modified to reflect your paths and potentially the exact nature of the error):
+```
+cd build
+cmake .. \
+  -DMLIR_DIR=/home/jmcdonald27/.conda/envs/rust-c/lib/cmake/mlir \
+  -DLLVM_DIR=/home/jmcdonald27/.conda/envs/rust-c/lib/cmake/llvm \
+  -DBUILD_SHARED_LIBS=ON \
+  -DLLVM_LINK_LLVM_DYLIB=ON \
+  -DGUROBI_LIBRARY=/home/jmcdonald27/gurobi1301/linux64/lib/libgurobi130.so \
+  -DGUROBI_INCLUDE_DIRS=/home/jmcdonald27/gurobi1301/linux64/include \
+  -DCMAKE_CXX_FLAGS="-I/home/jmcdonald27/gurobi1301/linux64/include" \
+  -DCMAKE_EXE_LINKER_FLAGS="-Wl,-rpath,/home/jmcdonald27/.conda/envs/rust-c/lib -Wl,-rpath-link,/home/jmcdonald27/.conda/envs/rust-c/lib -L/home/jmcdonald27/.conda/envs/rust-c/lib -lz -lzstd -lxml2"
+```
+Then run make compile_optipim again and you should be good to go!!
 ---
 
 ## 3. Sample Test of OptiPIM
@@ -147,4 +171,9 @@ This command invokes the simulator to evaluate the generated mapping, needed par
     - **simdram**: `simdram`
 
 ---
+
+To recreate figures from otipim run make fig9, fig10, fig14, or fig15. 
+To recreate the data indexing function figures from my paper, run make DataIndexing
+(this will recreate the speedup figure. To recreate the runtime figure, go to experiments_scripts/Data_Indexing and run draw_runtime.py)
+The results will be in exp_results/Data_Indexing as pdfs.
 **Thank you for trying out OptiPIM!**
